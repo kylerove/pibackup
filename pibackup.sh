@@ -36,12 +36,15 @@ Required parameters:
   -o, --output-dir [DIRECTORY]  Where backup will be saved and rotated.
 
 Optional parameters:
+  -d, --drive                   Set path of drive or device on raspberry pi
+  -g, --group                   Override local group owner of backup image
   -h, --help                    Display this message.
   -n, --image-name [NAME]       Rename the backup file as '<NAME>.img.x'.
                                   Default: self (\$ uname -n)
   -r, --rotation-count [COUNT]  Quantity of files to be kept. Default: 8
   -t, --tmp-dir [DIRECTORY]     Temporary directory to use on the remote node. Default: /tmp
   -T, --target [HOSTNAME]       Name of the host to backup. Default: self ($ uname -n)
+  -u, --user                    Override local user owner of backup image
   -q, --quiet                   Silent mode.
   -z, --gzip                    Compress image using gzip.
   -Z, --xz                      Compress image using xz.
@@ -97,11 +100,14 @@ node_name=$(uname -n)
 
 # Preparing optional parameters with default values
 compress=false
+drive=/dev/mmcblk0
+group=pi
 target=$node_name
 image_name=$target.img
 ps_opt=''
 rotation_count=8
 tmp_dir=/tmp  # /mnt/hdd/tmp
+user=pi
 quiet=false
 z_ext=''
 
@@ -117,6 +123,16 @@ while [ -n "$1" ]; do
       output_dir=$1
       ;;
     # Optional
+    -d | --drive)
+      shift
+      drive=$1
+      force_drive=true
+      ;;
+    -g | --group)
+      shift
+      group=$1
+      force_group=true
+      ;;
     -h | --help)
       usage
       exit 0
@@ -140,6 +156,11 @@ while [ -n "$1" ]; do
       if [ -z "$force_name" ]; then
         image_name="$target.img"
       fi
+      ;;
+    -u | --user)
+      shift
+      user=$1
+      force_user=true
       ;;
     -q | --quiet)
       quiet=true
@@ -180,15 +201,17 @@ image_path=$tmp_dir/$image_name
 check pishrink.sh
 
 # Defining commands
-chown_cmd='sudo chown pi:pi'
+chown_cmd="sudo chown $user:$group"
 shrink_cmd='sudo pishrink.sh -a'
 rotate_cmd="rotate"
 
 # dd command is made of two parts
 if [[ "$node_name" == "$target" ]]; then  # local
-  dd_cmd='sudo dd if=/dev/mmcblk0 bs=4M conv=noerror,sync'
+  dev_check="sudo fdisk -l | grep -q \"Disk $drive\" && echo \"true\" || echo \"false\")"
+  dd_cmd="sudo dd if=$drive bs=4M conv=noerror,sync"
 else  # remote
-  dd_cmd="ssh $target sudo dd if=/dev/mmcblk0 bs=4M conv=noerror,sync"
+  dev_check="ssh $target sudo fdisk -l | grep -q \"Disk $drive\" && echo \"true\" || echo \"false\")"
+  dd_cmd="ssh $target sudo dd if=$drive bs=4M conv=noerror,sync"
 fi
 if $quiet; then
   dd_cmd="$dd_cmd 2> /dev/null | dd of=$image_path bs=4M 2> /dev/null"
@@ -212,6 +235,9 @@ fi
 ###############################
 
 # Splitting dd command in half so root doesn't write the image
+p 'Checking if device exists'
+eval "$dev_check"
+
 p 'Dumping sdcard'
 eval "$dd_cmd"
 
