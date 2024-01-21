@@ -208,11 +208,11 @@ rotate_cmd="rotate"
 # dd command is made of two parts
 if [[ "$node_name" == "$target" ]]; then  # local
   dev_check=$(sudo fdisk -l | grep -q "Disk $drive"; echo $?)
-  dd_cmd="sudo dd if=$drive bs=4M conv=noerror,sync"
+  dd_cmd="sudo dd if=$drive bs=4M conv=noerror,sync status=progress"
   remote_string="on local system"
 else  # remote
   dev_check=$(ssh $target sudo fdisk -l | grep -q "Disk $drive"; echo $?)
-  dd_cmd="ssh $target sudo dd if=$drive bs=4M conv=noerror,sync"
+  dd_cmd="ssh $target sudo dd if=$drive bs=4M conv=noerror,sync status=progress"
   remote_string="on $target"
 fi
 if $quiet; then
