@@ -207,10 +207,10 @@ rotate_cmd="rotate"
 
 # dd command is made of two parts
 if [[ "$node_name" == "$target" ]]; then  # local
-  dev_check="sudo fdisk -l | grep -q 'Disk $drive' && echo 'true' || echo 'false'"
+  dev_check=$(sudo fdisk -l | grep -q "Disk $drive"; echo $?)
   dd_cmd="sudo dd if=$drive bs=4M conv=noerror,sync"
 else  # remote
-  dev_check="ssh $target sudo fdisk -l | grep -q 'Disk $drive' && echo 'true' || echo 'false'"
+  dev_check=$(ssh $target sudo fdisk -l | grep -q "Disk $drive"; echo $?)
   dd_cmd="ssh $target sudo dd if=$drive bs=4M conv=noerror,sync"
 fi
 if $quiet; then
@@ -236,8 +236,7 @@ fi
 
 # check for the device
 p 'Checking if device exists'
-dev_check_result=`$dev_check`
-if [["$dev_check_result" == "true"]]; then
+if [ "$dev_check" -eq 0 ]; then
   p "$drive exists"
 else
   err "$drive does not exist on the target. Verify disks by running 'sudo fdisk -l'"
