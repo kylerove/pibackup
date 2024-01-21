@@ -209,9 +209,11 @@ rotate_cmd="rotate"
 if [[ "$node_name" == "$target" ]]; then  # local
   dev_check=$(sudo fdisk -l | grep -q "Disk $drive"; echo $?)
   dd_cmd="sudo dd if=$drive bs=4M conv=noerror,sync"
+  remote_string="on local system"
 else  # remote
   dev_check=$(ssh $target sudo fdisk -l | grep -q "Disk $drive"; echo $?)
   dd_cmd="ssh $target sudo dd if=$drive bs=4M conv=noerror,sync"
+  remote_string="on $target"
 fi
 if $quiet; then
   dd_cmd="$dd_cmd 2> /dev/null | dd of=$image_path bs=4M 2> /dev/null"
@@ -235,7 +237,7 @@ fi
 ###############################
 
 # check for the device
-p 'Checking if device exists'
+p "Checking if $drive exists $remote_string"
 if [ "$dev_check" -eq 0 ]; then
   p "$drive exists"
 else
@@ -244,7 +246,7 @@ else
 fi
 
 # Splitting dd command in half so root doesn't write the image
-p 'Dumping sdcard'
+p "Dumping $drive"
 eval "$dd_cmd"
 
 p 'Setting permissions'
