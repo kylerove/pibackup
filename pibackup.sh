@@ -111,7 +111,7 @@ user=pi
 quiet=false
 z_ext=''
 
-# This one is requried and has to be defined later
+# This one is required and has to be defined later
 #output_dir=/mnt/hdd/backups/$node_name
 
 # Reading parameters
@@ -207,10 +207,10 @@ rotate_cmd="rotate"
 
 # dd command is made of two parts
 if [[ "$node_name" == "$target" ]]; then  # local
-  dev_check="sudo fdisk -l | grep -q \"Disk $drive\" && echo \"true\" || echo \"false\")"
+  dev_check="sudo fdisk -l | grep -q 'Disk $drive' && echo 'true' || echo 'false'"
   dd_cmd="sudo dd if=$drive bs=4M conv=noerror,sync"
 else  # remote
-  dev_check="ssh $target sudo fdisk -l | grep -q \"Disk $drive\" && echo \"true\" || echo \"false\")"
+  dev_check="ssh $target sudo fdisk -l | grep -q 'Disk $drive' && echo 'true' || echo 'false'"
   dd_cmd="ssh $target sudo dd if=$drive bs=4M conv=noerror,sync"
 fi
 if $quiet; then
@@ -234,10 +234,17 @@ fi
 # Actual backup starting here #
 ###############################
 
-# Splitting dd command in half so root doesn't write the image
+# check for the device
 p 'Checking if device exists'
-eval "$dev_check"
+dev_check_result=`$dev_check`
+if [["$dev_check_result" == "true"]]; then
+  p "$drive exists"
+else
+  err "$drive does not exist on the target. Verify disks by running 'sudo fdisk -l'"
+  exit 1
+fi
 
+# Splitting dd command in half so root doesn't write the image
 p 'Dumping sdcard'
 eval "$dd_cmd"
 
